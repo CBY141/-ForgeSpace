@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>板块详情 - 聚落</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: #f5f5f5; }
+        .header { background: #2c3e50; color: white; padding: 20px; text-align: center; }
+        .header a { color: #3498db; text-decoration: none; margin: 0 10px; }
+        .container { max-width: 800px; margin: 30px auto; padding: 0 20px; }
+        .breadcrumb { margin-bottom: 20px; color: #7f8c8d; }
+        .breadcrumb a { color: #3498db; text-decoration: none; }
+        .post-card { background: white; border-radius: 8px; padding: 20px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .post-card h3 { color: #2c3e50; margin-bottom: 8px; }
+        .post-card h3 a { color: #2c3e50; text-decoration: none; }
+        .post-card h3 a:hover { color: #3498db; }
+        .post-card .meta { color: #95a5a6; font-size: 12px; margin-bottom: 8px; }
+        .post-card .content-preview { color: #7f8c8d; font-size: 14px; }
+        .empty { text-align: center; padding: 50px; color: #7f8c8d; }
+        .btn { display: inline-block; padding: 10px 20px; background: #3498db; color: white; text-decoration: none; border-radius: 5px; border: none; cursor: pointer; }
+        .btn:hover { background: #2980b9; }
+    </style>
+</head>
+<body>
+<div class="header">
+    <h1>📋 <span th:text="${board.name}">板块名</span></h1>
+    <a href="/">← 返回首页</a>
+    <div th:if="${session.user}">
+        欢迎，<span th:text="${session.user.nickname}"></span> |
+        <a href="/logout">退出</a>
+    </div>
+    <div th:unless="${session.user}">
+        <a href="/login">登录</a> | <a href="/register">注册</a>
+    </div>
+</div>
+
+<div class="container">
+    <div class="breadcrumb">
+        <a href="/">首页</a> &gt; <span th:text="${board.name}"></span>
+    </div>
+    <p th:text="${board.description}" style="color: #7f8c8d; margin-bottom: 20px;"></p>
+
+    <!-- 发帖表单（仅登录可见） -->
+    <div th:if="${session.user}" style="background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+        <h3>发布新帖子</h3>
+        <form th:action="@{/boards/{id}/posts(id=${board.id})}" method="post">
+            <input type="text" name="title" placeholder="标题" required style="width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 5px;">
+            <textarea name="content" placeholder="内容" required style="width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 5px; height: 100px;"></textarea>
+            <button type="submit" class="btn">发布</button>
+        </form>
+    </div>
+    <div th:unless="${session.user}" style="text-align: center; padding: 20px;">
+        <a href="/login">登录后发帖</a>
+    </div>
+
+    <h2>帖子列表</h2>
+
+    <div th:each="post : ${posts}">
+        <div class="post-card">
+            <h3><a th:href="@{/posts/{id}(id=${post.id})}" th:text="${post.title}">标题</a></h3>
+            <div class="meta">用户ID: <span th:text="${post.userId}">1</span> | <span th:text="${post.createdAt}"></span></div>
+            <div class="content-preview" th:text="${#strings.abbreviate(post.content, 100)}"></div>
+        </div>
+    </div>
+
+    <div th:if="${#lists.isEmpty(posts)}" class="empty">
+        <p>这个板块还没有帖子，快来发第一个吧！</p>
+    </div>
+</div>
+</body>
+</html>
