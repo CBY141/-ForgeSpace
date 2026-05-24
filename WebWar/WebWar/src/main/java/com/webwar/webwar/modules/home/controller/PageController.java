@@ -1,10 +1,13 @@
 package com.webwar.webwar.modules.home.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.webwar.webwar.modules.board.mapper.BoardMapper;
 import com.webwar.webwar.modules.board.model.entity.Board;
-import com.webwar.webwar.modules.comment.mapper.CommentMapper;
+import com.webwar.webwar.modules.comment.model.dto.CreateCommentDTO;
 import com.webwar.webwar.modules.comment.model.entity.Comment;
+import com.webwar.webwar.modules.comment.mapper.CommentMapper;
+import com.webwar.webwar.modules.comment.service.CommentService;
 import com.webwar.webwar.modules.post.mapper.PostMapper;
 import com.webwar.webwar.modules.post.model.entity.Post;
 import com.webwar.webwar.modules.user.model.dto.LoginDTO;
@@ -31,6 +34,7 @@ public class PageController {
     private final PostMapper postMapper;
     private final CommentMapper commentMapper;
     private final UserService userService;
+    private final CommentService commentService;
 
     // 首页
     @GetMapping("/")
@@ -40,15 +44,27 @@ public class PageController {
         return "index";
     }
 
-    // 板块详情
+    // 板块详情（支持分页）
     @GetMapping("/boards/{boardId}")
-    public String boardDetail(@PathVariable Long boardId, Model model) {
+    public String boardDetail(@PathVariable Long boardId,
+                              @RequestParam(defaultValue = "1") int page,
+                              @RequestParam(defaultValue = "10") int size,
+                              Model model) {
+        // 获取板块信息
         Board board = boardMapper.selectById(boardId);
         if (board == null) return "redirect:/";
         model.addAttribute("board", board);
+
+        // 分页查询帖子
         LambdaQueryWrapper<Post> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(Post::getBoardId, boardId).orderByDesc(Post::getCreatedAt);
-        model.addAttribute("posts", postMapper.selectList(wrapper));
+        Page<Post> postPage = postMapper.selectPage(new Page<>(page, size), wrapper);
+
+        model.addAttribute("posts", postPage.getRecords());    // 当前页帖子列表
+        model.addAttribute("currentPage", postPage.getCurrent()); // 当前页码
+        model.addAttribute("totalPages", postPage.getPages());    // 总页数
+        model.addAttribute("totalPosts", postPage.getTotal());    // 总帖子数
+
         return "board-detail";
     }
 
@@ -131,6 +147,7 @@ public class PageController {
         post.setUserId(user.getId());
         post.setTitle(title);
         post.setContent(content);
+        post.setCommentCount(0);
         postMapper.insert(post);
         return "redirect:/boards/" + boardId;
     }
@@ -142,11 +159,10 @@ public class PageController {
                                 HttpSession session) {
         User user = (User) session.getAttribute("user");
         if (user == null) return "redirect:/login";
-        Comment comment = new Comment();
-        comment.setPostId(postId);
-        comment.setUserId(user.getId());
-        comment.setContent(content);
-        commentMapper.insert(comment);
+        CreateCommentDTO dto = new CreateCommentDTO();
+        dto.setUserId(user.getId());
+        dto.setContent(content);
+        commentService.createComment(postId, dto);
         return "redirect:/posts/" + postId;
     }
 }

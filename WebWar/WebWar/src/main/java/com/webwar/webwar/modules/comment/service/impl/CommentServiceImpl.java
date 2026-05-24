@@ -8,6 +8,7 @@ import com.webwar.webwar.modules.comment.model.entity.Comment;
 import com.webwar.webwar.modules.comment.service.CommentService;
 import com.webwar.webwar.modules.post.mapper.PostMapper;
 import com.webwar.webwar.modules.post.model.entity.Post;
+import com.webwar.webwar.modules.post.service.impl.PostServiceImpl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -19,21 +20,23 @@ public class CommentServiceImpl implements CommentService {
 
     private final CommentMapper commentMapper;
     private final PostMapper postMapper;
+    private final PostServiceImpl postService;
 
     @Override
     public R<?> createComment(Long postId, CreateCommentDTO dto) {
-        // 检查帖子是否存在
         Post post = postMapper.selectById(postId);
         if (post == null) {
             return R.fail("帖子不存在");
         }
 
-        // 创建评论
         Comment comment = new Comment();
         comment.setPostId(postId);
         comment.setUserId(dto.getUserId());
         comment.setContent(dto.getContent());
         commentMapper.insert(comment);
+
+        // ⚠️ 这一行必须存在
+        postService.incrementCommentCount(postId);
 
         return R.ok("评论成功");
     }

@@ -40,6 +40,20 @@
             <version>3.5.9</version>
         </dependency>
 
+        <!-- MyBatis-Plus 扩展（含分页插件） -->
+        <dependency>
+            <groupId>com.baomidou</groupId>
+            <artifactId>mybatis-plus-extension</artifactId>
+            <version>3.5.9</version>
+        </dependency>
+
+        <!-- MyBatis-Plus JSqlParser（分页插件依赖） -->
+        <dependency>
+            <groupId>com.baomidou</groupId>
+            <artifactId>mybatis-plus-jsqlparser</artifactId>
+            <version>3.5.9</version>
+        </dependency>
+
         <!-- Lombok -->
         <dependency>
             <groupId>org.projectlombok</groupId>

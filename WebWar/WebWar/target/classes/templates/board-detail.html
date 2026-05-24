@@ -20,6 +20,11 @@
         .empty { text-align: center; padding: 50px; color: #7f8c8d; }
         .btn { display: inline-block; padding: 10px 20px; background: #3498db; color: white; text-decoration: none; border-radius: 5px; border: none; cursor: pointer; }
         .btn:hover { background: #2980b9; }
+        .pagination { text-align: center; margin-top: 20px; }
+        .pagination a, .pagination span { display: inline-block; padding: 8px 14px; margin: 0 4px; border-radius: 5px; text-decoration: none; color: #2c3e50; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .pagination a:hover { background: #3498db; color: white; }
+        .pagination .current { background: #3498db; color: white; }
+        .pagination .disabled { color: #bdc3c7; background: #ecf0f1; }
     </style>
 </head>
 <body>
@@ -41,7 +46,7 @@
     </div>
     <p th:text="${board.description}" style="color: #7f8c8d; margin-bottom: 20px;"></p>
 
-    <!-- 发帖表单（仅登录可见） -->
+    <!-- 发帖表单 -->
     <div th:if="${session.user}" style="background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
         <h3>发布新帖子</h3>
         <form th:action="@{/boards/{id}/posts(id=${board.id})}" method="post">
@@ -54,18 +59,43 @@
         <a href="/login">登录后发帖</a>
     </div>
 
-    <h2>帖子列表</h2>
+    <h2>帖子列表（共 <span th:text="${totalPosts}">0</span> 篇）</h2>
 
     <div th:each="post : ${posts}">
         <div class="post-card">
             <h3><a th:href="@{/posts/{id}(id=${post.id})}" th:text="${post.title}">标题</a></h3>
-            <div class="meta">用户ID: <span th:text="${post.userId}">1</span> | <span th:text="${post.createdAt}"></span></div>
+            <div class="meta">
+                <span th:text="${@userNicknameUtil.getNickname(post.userId)}">用户</span> |
+                <span th:text="${post.commentCount}">0</span> 条评论 |
+                <span th:text="${post.createdAt}"></span>
+            </div>
             <div class="content-preview" th:text="${#strings.abbreviate(post.content, 100)}"></div>
         </div>
     </div>
 
     <div th:if="${#lists.isEmpty(posts)}" class="empty">
         <p>这个板块还没有帖子，快来发第一个吧！</p>
+    </div>
+
+    <!-- 分页导航 -->
+    <div th:if="${totalPages > 1}" class="pagination">
+        <!-- 上一页 -->
+        <a th:if="${currentPage > 1}"
+           th:href="@{/boards/{id}(id=${board.id}, page=${currentPage - 1})}">上一页</a>
+        <span th:unless="${currentPage > 1}" class="disabled">上一页</span>
+
+        <!-- 页码 -->
+        <span th:each="i : ${#numbers.sequence(1, totalPages)}">
+                <a th:if="${i != currentPage}"
+                   th:href="@{/boards/{id}(id=${board.id}, page=${i})}"
+                   th:text="${i}">1</a>
+                <span th:if="${i == currentPage}" class="current" th:text="${i}">1</span>
+            </span>
+
+        <!-- 下一页 -->
+        <a th:if="${currentPage < totalPages}"
+           th:href="@{/boards/{id}(id=${board.id}, page=${currentPage + 1})}">下一页</a>
+        <span th:unless="${currentPage < totalPages}" class="disabled">下一页</span>
     </div>
 </div>
 </body>

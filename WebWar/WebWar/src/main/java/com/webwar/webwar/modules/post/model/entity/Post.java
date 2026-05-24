@@ -14,9 +14,15 @@ public class Post {
     @TableId(type = IdType.AUTO)
     private Long id;
 
-    private Long boardId;    // 所属板块ID
-    private Long userId;     // 发帖用户ID
+    private Long boardId;
+
+    private Long userId;
+
     private String title;
+
     private String content;
+
+    private Integer commentCount;
+
     private LocalDateTime createdAt;
 }

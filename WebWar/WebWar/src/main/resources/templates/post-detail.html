@@ -48,7 +48,7 @@
     <div class="post-full">
         <h2 th:text="${post.title}"></h2>
         <div class="meta">
-            用户ID: <span th:text="${post.userId}">1</span> |
+            <span th:text="${@userNicknameUtil.getNickname(post.userId)}">用户</span> |
             发布于 <span th:text="${post.createdAt}"></span>
         </div>
         <div class="content" th:text="${post.content}"></div>
@@ -72,7 +72,7 @@
         <div th:each="comment : ${comments}">
             <div class="comment-card">
                 <div class="meta">
-                    用户ID: <span th:text="${comment.userId}">1</span> |
+                    <span th:text="${@userNicknameUtil.getNickname(comment.userId)}">用户</span> |
                     <span th:text="${comment.createdAt}"></span>
                 </div>
                 <div class="content" th:text="${comment.content}"></div>

@@ -24,6 +24,7 @@ public class PostServiceImpl implements PostService {
         post.setUserId(dto.getUserId());
         post.setTitle(dto.getTitle());
         post.setContent(dto.getContent());
+        post.setCommentCount(0);
         postMapper.insert(post);
         return R.ok("发帖成功");
     }
@@ -43,5 +44,14 @@ public class PostServiceImpl implements PostService {
             return R.fail("帖子不存在");
         }
         return R.ok(post);
+    }
+
+    // 新增：评论数 +1
+    public void incrementCommentCount(Long postId) {
+        Post post = postMapper.selectById(postId);
+        if (post != null) {
+            post.setCommentCount(post.getCommentCount() + 1);
+            postMapper.updateById(post);
+        }
     }
 }
