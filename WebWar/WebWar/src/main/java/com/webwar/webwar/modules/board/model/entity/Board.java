@@ -20,5 +20,9 @@ public class Board {
 
     private Long creatorId;
 
+    private String type;
+
+    private Integer isOfficial;
+
     private LocalDateTime createdAt;
 }

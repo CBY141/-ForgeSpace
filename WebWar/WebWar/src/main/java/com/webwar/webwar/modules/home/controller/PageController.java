@@ -4,12 +4,15 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.webwar.webwar.modules.board.mapper.BoardMapper;
 import com.webwar.webwar.modules.board.model.entity.Board;
+import com.webwar.webwar.modules.board.strategy.BoardFactory;
 import com.webwar.webwar.modules.comment.model.dto.CreateCommentDTO;
 import com.webwar.webwar.modules.comment.model.entity.Comment;
 import com.webwar.webwar.modules.comment.mapper.CommentMapper;
 import com.webwar.webwar.modules.comment.service.CommentService;
+import com.webwar.webwar.modules.comment.service.impl.CommentServiceImpl;
 import com.webwar.webwar.modules.post.mapper.PostMapper;
 import com.webwar.webwar.modules.post.model.entity.Post;
+import com.webwar.webwar.modules.post.service.impl.PostServiceImpl;
 import com.webwar.webwar.modules.user.model.dto.LoginDTO;
 import com.webwar.webwar.modules.user.model.dto.RegisterDTO;
 import com.webwar.webwar.modules.user.model.entity.User;
@@ -35,6 +38,9 @@ public class PageController {
     private final CommentMapper commentMapper;
     private final UserService userService;
     private final CommentService commentService;
+    private final BoardFactory boardFactory;
+    private final PostServiceImpl postService;
+    private final CommentServiceImpl commentServiceImpl;
 
     // 首页
     @GetMapping("/")
@@ -44,26 +50,24 @@ public class PageController {
         return "index";
     }
 
-    // 板块详情（支持分页）
+    // 板块详情
     @GetMapping("/boards/{boardId}")
     public String boardDetail(@PathVariable Long boardId,
                               @RequestParam(defaultValue = "1") int page,
                               @RequestParam(defaultValue = "10") int size,
                               Model model) {
-        // 获取板块信息
         Board board = boardMapper.selectById(boardId);
         if (board == null) return "redirect:/";
         model.addAttribute("board", board);
 
-        // 分页查询帖子
         LambdaQueryWrapper<Post> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(Post::getBoardId, boardId).orderByDesc(Post::getCreatedAt);
         Page<Post> postPage = postMapper.selectPage(new Page<>(page, size), wrapper);
 
-        model.addAttribute("posts", postPage.getRecords());    // 当前页帖子列表
-        model.addAttribute("currentPage", postPage.getCurrent()); // 当前页码
-        model.addAttribute("totalPages", postPage.getPages());    // 总页数
-        model.addAttribute("totalPosts", postPage.getTotal());    // 总帖子数
+        model.addAttribute("posts", postPage.getRecords());
+        model.addAttribute("currentPage", postPage.getCurrent());
+        model.addAttribute("totalPages", postPage.getPages());
+        model.addAttribute("totalPosts", postPage.getTotal());
 
         return "board-detail";
     }
@@ -152,6 +156,21 @@ public class PageController {
         return "redirect:/boards/" + boardId;
     }
 
+    // 创建板块
+    @PostMapping("/boards")
+    public String createBoard(@RequestParam String name,
+                              @RequestParam String description,
+                              @RequestParam(defaultValue = "normal") String type,
+                              HttpSession session) {
+        User user = (User) session.getAttribute("user");
+        if (user == null) return "redirect:/login";
+
+        Board board = boardFactory.getStrategy(type)
+                .createBoard(name, description, user.getId());
+        boardMapper.insert(board);
+        return "redirect:/";
+    }
+
     // 发表评论
     @PostMapping("/posts/{postId}/comments")
     public String createComment(@PathVariable Long postId,
@@ -164,5 +183,32 @@ public class PageController {
         dto.setContent(content);
         commentService.createComment(postId, dto);
         return "redirect:/posts/" + postId;
+    }
+
+    // 删除帖子
+    @GetMapping("/posts/{postId}/delete")
+    public String deletePost(@PathVariable Long postId, HttpSession session) {
+        User user = (User) session.getAttribute("user");
+        if (user == null) return "redirect:/login";
+
+        Post post = postMapper.selectById(postId);
+        if (post != null && post.getUserId().equals(user.getId())) {
+            postService.deletePost(postId);
+        }
+        return "redirect:/boards/" + post.getBoardId();
+    }
+
+    // 删除评论
+    @GetMapping("/comments/{commentId}/delete")
+    public String deleteComment(@PathVariable Long commentId, HttpSession session) {
+        User user = (User) session.getAttribute("user");
+        if (user == null) return "redirect:/login";
+
+        Comment comment = commentMapper.selectById(commentId);
+        if (comment != null && comment.getUserId().equals(user.getId())) {
+            commentServiceImpl.deleteComment(commentId);
+            return "redirect:/posts/" + comment.getPostId();
+        }
+        return "redirect:/";
     }
 }

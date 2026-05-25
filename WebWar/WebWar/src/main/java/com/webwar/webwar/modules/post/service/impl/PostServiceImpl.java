@@ -2,12 +2,15 @@ package com.webwar.webwar.modules.post.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.webwar.webwar.common.result.R;
+import com.webwar.webwar.modules.comment.mapper.CommentMapper;
+import com.webwar.webwar.modules.comment.model.entity.Comment;
 import com.webwar.webwar.modules.post.mapper.PostMapper;
 import com.webwar.webwar.modules.post.model.dto.CreatePostDTO;
 import com.webwar.webwar.modules.post.model.entity.Post;
 import com.webwar.webwar.modules.post.service.PostService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -16,6 +19,7 @@ import java.util.List;
 public class PostServiceImpl implements PostService {
 
     private final PostMapper postMapper;
+    private final CommentMapper commentMapper;
 
     @Override
     public R<?> createPost(CreatePostDTO dto) {
@@ -46,12 +50,29 @@ public class PostServiceImpl implements PostService {
         return R.ok(post);
     }
 
-    // 新增：评论数 +1
     public void incrementCommentCount(Long postId) {
         Post post = postMapper.selectById(postId);
         if (post != null) {
             post.setCommentCount(post.getCommentCount() + 1);
             postMapper.updateById(post);
         }
+    }
+
+    public void decrementCommentCount(Long postId) {
+        Post post = postMapper.selectById(postId);
+        if (post != null && post.getCommentCount() > 0) {
+            post.setCommentCount(post.getCommentCount() - 1);
+            postMapper.updateById(post);
+        }
+    }
+
+    @Transactional
+    public void deletePost(Long postId) {
+        // 删除该帖子下的所有评论
+        LambdaQueryWrapper<Comment> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Comment::getPostId, postId);
+        commentMapper.delete(wrapper);
+        // 删除帖子
+        postMapper.deleteById(postId);
     }
 }

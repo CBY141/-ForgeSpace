@@ -52,6 +52,11 @@
             发布于 <span th:text="${post.createdAt}"></span>
         </div>
         <div class="content" th:text="${post.content}"></div>
+        <div th:if="${session.user != null && session.user.id == post.userId}" style="margin-top: 15px; text-align: right;">
+            <a th:href="@{/posts/{id}/delete(id=${post.id})}"
+               onclick="return confirm('确定要删除这篇帖子吗？所有评论也会被删除。')"
+               style="color: #e74c3c; text-decoration: none; font-size: 13px;">🗑️ 删除帖子</a>
+        </div>
     </div>
 
     <!-- 评论区 -->
@@ -74,6 +79,11 @@
                 <div class="meta">
                     <span th:text="${@userNicknameUtil.getNickname(comment.userId)}">用户</span> |
                     <span th:text="${comment.createdAt}"></span>
+                    <span th:if="${session.user != null && session.user.id == comment.userId}" style="margin-left: 8px;">
+                            <a th:href="@{/comments/{id}/delete(id=${comment.id})}"
+                               onclick="return confirm('确定删除这条评论吗？')"
+                               style="color: #e74c3c; text-decoration: none; font-size: 12px;">删除</a>
+                        </span>
                 </div>
                 <div class="content" th:text="${comment.content}"></div>
             </div>

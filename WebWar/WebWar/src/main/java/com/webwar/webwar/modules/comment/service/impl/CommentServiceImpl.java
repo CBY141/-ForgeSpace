@@ -11,6 +11,7 @@ import com.webwar.webwar.modules.post.model.entity.Post;
 import com.webwar.webwar.modules.post.service.impl.PostServiceImpl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -35,9 +36,7 @@ public class CommentServiceImpl implements CommentService {
         comment.setContent(dto.getContent());
         commentMapper.insert(comment);
 
-        // ⚠️ 这一行必须存在
         postService.incrementCommentCount(postId);
-
         return R.ok("评论成功");
     }
 
@@ -47,5 +46,14 @@ public class CommentServiceImpl implements CommentService {
         wrapper.eq(Comment::getPostId, postId).orderByAsc(Comment::getCreatedAt);
         List<Comment> comments = commentMapper.selectList(wrapper);
         return R.ok(comments);
+    }
+
+    @Transactional
+    public void deleteComment(Long commentId) {
+        Comment comment = commentMapper.selectById(commentId);
+        if (comment != null) {
+            commentMapper.deleteById(commentId);
+            postService.decrementCommentCount(comment.getPostId());
+        }
     }
 }
