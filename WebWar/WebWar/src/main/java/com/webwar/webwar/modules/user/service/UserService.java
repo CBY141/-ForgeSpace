@@ -9,4 +9,5 @@ public interface UserService {
     R<?> register(RegisterDTO registerDTO);
     R<?> login(LoginDTO loginDTO);
     User getByUsername(String username);
+    User getById(Long id);
 }

@@ -1,6 +1,7 @@
 package com.webwar.webwar.modules.post.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.webwar.webwar.common.exception.BusinessException;
 import com.webwar.webwar.common.result.R;
 import com.webwar.webwar.modules.comment.mapper.CommentMapper;
 import com.webwar.webwar.modules.comment.model.entity.Comment;
@@ -45,17 +46,24 @@ public class PostServiceImpl implements PostService {
     public R<Post> getPostById(Long id) {
         Post post = postMapper.selectById(id);
         if (post == null) {
-            return R.fail("帖子不存在");
+            throw new BusinessException(404, "帖子不存在");
         }
         return R.ok(post);
     }
 
+    @Override
+    public R<List<Post>> searchPosts(String keyword) {
+        List<Post> posts = postMapper.searchByTitle(keyword);
+        return R.ok(posts);
+    }
+
     public void incrementCommentCount(Long postId) {
         Post post = postMapper.selectById(postId);
-        if (post != null) {
-            post.setCommentCount(post.getCommentCount() + 1);
-            postMapper.updateById(post);
+        if (post == null) {
+            throw new BusinessException(404, "帖子不存在");
         }
+        post.setCommentCount(post.getCommentCount() + 1);
+        postMapper.updateById(post);
     }
 
     public void decrementCommentCount(Long postId) {
@@ -68,11 +76,13 @@ public class PostServiceImpl implements PostService {
 
     @Transactional
     public void deletePost(Long postId) {
-        // 删除该帖子下的所有评论
+        Post post = postMapper.selectById(postId);
+        if (post == null) {
+            throw new BusinessException(404, "帖子不存在");
+        }
         LambdaQueryWrapper<Comment> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(Comment::getPostId, postId);
         commentMapper.delete(wrapper);
-        // 删除帖子
         postMapper.deleteById(postId);
     }
 }

@@ -7,6 +7,13 @@ spring:
     username: root
     password: "@chen141!?ful@"
     driver-class-name: com.mysql.cj.jdbc.Driver
+  servlet:
+    multipart:
+      max-file-size: 2MB
+      max-request-size: 5MB
+  web:
+    resources:
+      static-locations: classpath:/static/, file:D:/webwar-uploads/
 
 mybatis-plus:
   configuration:
@@ -15,3 +22,7 @@ mybatis-plus:
   global-config:
     db-config:
       id-type: auto
+
+file:
+  upload:
+    dir: D:/webwar-uploads/

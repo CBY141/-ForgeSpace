@@ -10,4 +10,5 @@ public interface PostService {
     R<?> createPost(CreatePostDTO dto);
     R<List<Post>> getPostsByBoardId(Long boardId);
     R<Post> getPostById(Long id);
+    R<List<Post>> searchPosts(String keyword);
 }

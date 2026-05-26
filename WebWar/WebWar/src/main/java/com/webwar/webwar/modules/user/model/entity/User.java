@@ -20,5 +20,13 @@ public class User {
 
     private String nickname;
 
+    private String avatar;
+
+    private String role;
+
     private LocalDateTime createdAt;
+
+    public boolean isAdmin() {
+        return "admin".equals(role);
+    }
 }

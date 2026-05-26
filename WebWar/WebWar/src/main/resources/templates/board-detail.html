@@ -2,101 +2,136 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>板块详情 - 聚落</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: Arial, sans-serif; background: #f5f5f5; }
-        .header { background: #2c3e50; color: white; padding: 20px; text-align: center; }
-        .header a { color: #3498db; text-decoration: none; margin: 0 10px; }
-        .container { max-width: 800px; margin: 30px auto; padding: 0 20px; }
-        .breadcrumb { margin-bottom: 20px; color: #7f8c8d; }
-        .breadcrumb a { color: #3498db; text-decoration: none; }
-        .post-card { background: white; border-radius: 8px; padding: 20px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        .post-card h3 { color: #2c3e50; margin-bottom: 8px; }
-        .post-card h3 a { color: #2c3e50; text-decoration: none; }
-        .post-card h3 a:hover { color: #3498db; }
-        .post-card .meta { color: #95a5a6; font-size: 12px; margin-bottom: 8px; }
-        .post-card .content-preview { color: #7f8c8d; font-size: 14px; }
-        .empty { text-align: center; padding: 50px; color: #7f8c8d; }
-        .btn { display: inline-block; padding: 10px 20px; background: #3498db; color: white; text-decoration: none; border-radius: 5px; border: none; cursor: pointer; }
-        .btn:hover { background: #2980b9; }
-        .pagination { text-align: center; margin-top: 20px; }
-        .pagination a, .pagination span { display: inline-block; padding: 8px 14px; margin: 0 4px; border-radius: 5px; text-decoration: none; color: #2c3e50; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-        .pagination a:hover { background: #3498db; color: white; }
-        .pagination .current { background: #3498db; color: white; }
-        .pagination .disabled { color: #bdc3c7; background: #ecf0f1; }
+        .post-card { transition: transform 0.2s; }
+        .post-card:hover { transform: translateY(-2px); }
+        .nav-avatar {
+            width: 30px; height: 30px; border-radius: 50%;
+            object-fit: cover; border: 2px solid white;
+        }
+        .search-form {
+            display: flex; align-items: center; gap: 5px;
+        }
+        .search-form input {
+            width: 180px; padding: 5px 10px; border: 1px solid #ccc;
+            border-radius: 4px; font-size: 14px;
+        }
+        .search-form button {
+            padding: 5px 12px; background: #3498db; color: white;
+            border: none; border-radius: 4px; cursor: pointer; font-size: 14px;
+        }
+        .search-form button:hover { background: #2980b9; }
     </style>
 </head>
 <body>
-<div class="header">
-    <h1>📋 <span th:text="${board.name}">板块名</span></h1>
-    <a href="/">← 返回首页</a>
-    <div th:if="${session.user}">
-        欢迎，<span th:text="${session.user.nickname}"></span> |
-        <a href="/logout">退出</a>
-    </div>
-    <div th:unless="${session.user}">
-        <a href="/login">登录</a> | <a href="/register">注册</a>
-    </div>
-</div>
 
-<div class="container">
-    <div class="breadcrumb">
-        <a href="/">首页</a> &gt; <span th:text="${board.name}"></span>
-    </div>
-    <p th:text="${board.description}" style="color: #7f8c8d; margin-bottom: 20px;"></p>
-
-    <!-- 发帖表单 -->
-    <div th:if="${session.user}" style="background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
-        <h3>发布新帖子</h3>
-        <form th:action="@{/boards/{id}/posts(id=${board.id})}" method="post">
-            <input type="text" name="title" placeholder="标题" required style="width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 5px;">
-            <textarea name="content" placeholder="内容" required style="width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 5px; height: 100px;"></textarea>
-            <button type="submit" class="btn">发布</button>
-        </form>
-    </div>
-    <div th:unless="${session.user}" style="text-align: center; padding: 20px;">
-        <a href="/login">登录后发帖</a>
-    </div>
-
-    <h2>帖子列表（共 <span th:text="${totalPosts}">0</span> 篇）</h2>
-
-    <div th:each="post : ${posts}">
-        <div class="post-card">
-            <h3><a th:href="@{/posts/{id}(id=${post.id})}" th:text="${post.title}">标题</a></h3>
-            <div class="meta">
-                <span th:text="${@userNicknameUtil.getNickname(post.userId)}">用户</span> |
-                <span th:text="${post.commentCount}">0</span> 条评论 |
-                <span th:text="${post.createdAt}"></span>
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <div class="container">
+        <a class="navbar-brand" href="/">🏠 聚落</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <div class="ms-auto d-flex align-items-center">
+                <!-- 搜索框 -->
+                <form action="/search" method="get" class="search-form me-3">
+                    <input type="text" name="keyword" placeholder="搜索帖子..." required>
+                    <button type="submit">🔍</button>
+                </form>
+                <a href="/" class="btn btn-outline-light btn-sm me-3">← 返回首页</a>
+                <span th:if="${session.user}" class="d-flex align-items-center">
+                    <img th:src="@{${session.user.avatar}(v=${#dates.createNow().getTime()})}" class="nav-avatar me-2" alt="头像"
+                         onerror="this.onerror=null; this.src='https://api.dicebear.com/9.x/initials/svg?seed=default';">
+                    <a class="text-white text-decoration-none me-2"
+                       th:href="@{/user/{id}(id=${session.user.id})}"
+                       th:text="${session.user.nickname}">昵称</a>
+                    <a href="/logout" class="btn btn-sm btn-outline-danger">退出</a>
+                </span>
+                <span th:unless="${session.user}">
+                    <a href="/login" class="btn btn-sm btn-outline-light ms-2">登录</a>
+                    <a href="/register" class="btn btn-sm btn-outline-light ms-2">注册</a>
+                </span>
             </div>
-            <div class="content-preview" th:text="${#strings.abbreviate(post.content, 100)}"></div>
         </div>
     </div>
+</nav>
 
-    <div th:if="${#lists.isEmpty(posts)}" class="empty">
+<div class="container mt-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="/">首页</a></li>
+            <li class="breadcrumb-item active" th:text="${board.name}">板块名</li>
+        </ol>
+    </nav>
+
+    <div class="mb-3">
+        <h2 th:text="${board.name}">板块名</h2>
+        <p class="text-muted" th:text="${board.description}">板块描述</p>
+    </div>
+
+    <div th:if="${session.user}" class="card mb-4">
+        <div class="card-header bg-success text-white">
+            <h5 class="mb-0">发布新帖子</h5>
+        </div>
+        <div class="card-body">
+            <form th:action="@{/boards/{id}/posts(id=${board.id})}" method="post">
+                <div class="mb-3">
+                    <input type="text" name="title" class="form-control" placeholder="标题" required>
+                </div>
+                <div class="mb-3">
+                    <textarea name="content" class="form-control" rows="4" placeholder="内容" required></textarea>
+                </div>
+                <button type="submit" class="btn btn-success">发布</button>
+            </form>
+        </div>
+    </div>
+    <div th:unless="${session.user}" class="text-center py-3">
+        <a href="/login" class="btn btn-outline-primary">登录后发帖</a>
+    </div>
+
+    <h4>帖子列表 <small class="text-muted">（共 <span th:text="${totalPosts}">0</span> 篇）</small></h4>
+
+    <div th:if="${#lists.isEmpty(posts)}" class="text-center py-5 text-muted">
         <p>这个板块还没有帖子，快来发第一个吧！</p>
     </div>
 
-    <!-- 分页导航 -->
-    <div th:if="${totalPages > 1}" class="pagination">
-        <!-- 上一页 -->
-        <a th:if="${currentPage > 1}"
-           th:href="@{/boards/{id}(id=${board.id}, page=${currentPage - 1})}">上一页</a>
-        <span th:unless="${currentPage > 1}" class="disabled">上一页</span>
-
-        <!-- 页码 -->
-        <span th:each="i : ${#numbers.sequence(1, totalPages)}">
-                <a th:if="${i != currentPage}"
-                   th:href="@{/boards/{id}(id=${board.id}, page=${i})}"
-                   th:text="${i}">1</a>
-                <span th:if="${i == currentPage}" class="current" th:text="${i}">1</span>
-            </span>
-
-        <!-- 下一页 -->
-        <a th:if="${currentPage < totalPages}"
-           th:href="@{/boards/{id}(id=${board.id}, page=${currentPage + 1})}">下一页</a>
-        <span th:unless="${currentPage < totalPages}" class="disabled">下一页</span>
+    <div th:each="post : ${posts}">
+        <div class="card post-card mb-3">
+            <div class="card-body">
+                <h5 class="card-title">
+                    <a th:href="@{/posts/{id}(id=${post.id})}" class="text-decoration-none text-dark"
+                       th:text="${post.title}">标题</a>
+                </h5>
+                <p class="card-text text-muted small">
+                    <a th:href="@{/user/{id}(id=${post.userId})}" class="text-decoration-none text-muted"
+                       th:text="${@userNicknameUtil.getNickname(post.userId)}">用户</a> ·
+                    <span th:text="${post.commentCount}">0</span> 条评论 ·
+                    <span th:text="${#temporals.format(post.createdAt, 'yyyy-MM-dd HH:mm')}"></span>
+                </p>
+                <p class="card-text text-muted" th:text="${#strings.abbreviate(post.content, 120)}"></p>
+            </div>
+        </div>
     </div>
+
+    <nav th:if="${totalPages > 1}" class="mt-4">
+        <ul class="pagination justify-content-center">
+            <li class="page-item" th:classappend="${currentPage == 1} ? 'disabled'">
+                <a class="page-link" th:href="@{/boards/{id}(id=${board.id}, page=${currentPage - 1})}">上一页</a>
+            </li>
+            <li class="page-item" th:each="i : ${#numbers.sequence(1, totalPages)}"
+                th:classappend="${i == currentPage} ? 'active'">
+                <a class="page-link" th:href="@{/boards/{id}(id=${board.id}, page=${i})}" th:text="${i}">1</a>
+            </li>
+            <li class="page-item" th:classappend="${currentPage == totalPages} ? 'disabled'">
+                <a class="page-link" th:href="@{/boards/{id}(id=${board.id}, page=${currentPage + 1})}">下一页</a>
+            </li>
+        </ul>
+    </nav>
 </div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

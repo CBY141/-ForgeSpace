@@ -1,6 +1,7 @@
 package com.webwar.webwar.modules.comment.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.webwar.webwar.common.exception.BusinessException;
 import com.webwar.webwar.common.result.R;
 import com.webwar.webwar.modules.comment.mapper.CommentMapper;
 import com.webwar.webwar.modules.comment.model.dto.CreateCommentDTO;
@@ -27,7 +28,7 @@ public class CommentServiceImpl implements CommentService {
     public R<?> createComment(Long postId, CreateCommentDTO dto) {
         Post post = postMapper.selectById(postId);
         if (post == null) {
-            return R.fail("帖子不存在");
+            throw new BusinessException(404, "帖子不存在");
         }
 
         Comment comment = new Comment();
@@ -51,9 +52,10 @@ public class CommentServiceImpl implements CommentService {
     @Transactional
     public void deleteComment(Long commentId) {
         Comment comment = commentMapper.selectById(commentId);
-        if (comment != null) {
-            commentMapper.deleteById(commentId);
-            postService.decrementCommentCount(comment.getPostId());
+        if (comment == null) {
+            throw new BusinessException(404, "评论不存在");
         }
+        commentMapper.deleteById(commentId);
+        postService.decrementCommentCount(comment.getPostId());
     }
 }
