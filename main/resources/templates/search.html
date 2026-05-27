@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>搜索 - 聚落</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .nav-avatar {
+            width: 30px; height: 30px; border-radius: 50%;
+            object-fit: cover; border: 2px solid white;
+        }
+        .post-card { transition: transform 0.2s; }
+        .post-card:hover { transform: translateY(-2px); }
+    </style>
+</head>
+<body>
+
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <div class="container">
+        <a class="navbar-brand" href="/">🏠 聚落</a>
+        <div class="ms-auto d-flex align-items-center">
+            <a href="/" class="btn btn-outline-light btn-sm me-3">← 返回首页</a>
+            <span th:if="${session.user}" class="d-flex align-items-center">
+                <img th:src="@{${session.user.avatar}(v=${#dates.createNow().getTime()})}" class="nav-avatar me-2" alt="头像"
+                     onerror="this.onerror=null; this.src='https://api.dicebear.com/9.x/initials/svg?seed=default';">
+                <a class="text-white text-decoration-none me-2"
+                   th:href="@{/user/{id}(id=${session.user.id})}"
+                   th:text="${session.user.nickname}">昵称</a>
+                <a href="/logout" class="btn btn-sm btn-outline-danger">退出</a>
+            </span>
+            <span th:unless="${session.user}">
+                <a href="/login" class="btn btn-sm btn-outline-light ms-2">登录</a>
+                <a href="/register" class="btn btn-sm btn-outline-light ms-2">注册</a>
+            </span>
+        </div>
+    </div>
+</nav>
+
+<div class="container mt-4">
+    <!-- 搜索表单 -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form action="/search" method="get" class="row g-2 align-items-center">
+                <div class="col-md-10">
+                    <input type="text" name="keyword" class="form-control" placeholder="搜索帖子标题..."
+                           th:value="${keyword}" required>
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary w-100">🔍 搜索</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 搜索结果 -->
+    <div th:if="${keyword != null && !keyword.trim().isEmpty()}">
+        <h4>搜索结果：<span th:text="${keyword}"></span></h4>
+
+        <div th:if="${posts != null && !#lists.isEmpty(posts)}">
+            <p class="text-muted">共找到 <span th:text="${#lists.size(posts)}">0</span> 篇帖子</p>
+
+            <div th:each="post : ${posts}">
+                <div class="card post-card mb-3">
+                    <div class="card-body">
+                        <h5 class="card-title">
+                            <a th:href="@{/posts/{id}(id=${post.id})}" class="text-decoration-none text-dark"
+                               th:text="${post.title}">标题</a>
+                        </h5>
+                        <p class="card-text text-muted small">
+                            <a th:href="@{/user/{id}(id=${post.userId})}" class="text-decoration-none text-muted"
+                               th:text="${@userNicknameUtil.getNickname(post.userId)}">用户</a> ·
+                            <span th:text="${post.commentCount}">0</span> 条评论 ·
+                            <span th:text="${#temporals.format(post.createdAt, 'yyyy-MM-dd HH:mm')}"></span>
+                        </p>
+                        <p class="card-text text-muted" th:text="${#strings.abbreviate(post.content, 120)}"></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div th:if="${posts == null || #lists.isEmpty(posts)}" class="text-center py-5 text-muted">
+            <p>没有找到相关帖子</p>
+        </div>
+    </div>
+
+    <div th:unless="${keyword != null && !keyword.trim().isEmpty()}">
+        <div class="text-center py-5 text-muted">
+            <p>请输入关键字进行搜索</p>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

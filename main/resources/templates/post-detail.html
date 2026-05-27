@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>帖子详情 - 聚落</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .nav-avatar {
+            width: 30px; height: 30px; border-radius: 50%;
+            object-fit: cover; border: 2px solid white;
+        }
+        .search-form {
+            display: flex; align-items: center; gap: 5px;
+        }
+        .search-form input {
+            width: 180px; padding: 5px 10px; border: 1px solid #ccc;
+            border-radius: 4px; font-size: 14px;
+        }
+        .search-form button {
+            padding: 5px 12px; background: #3498db; color: white;
+            border: none; border-radius: 4px; cursor: pointer; font-size: 14px;
+        }
+        .search-form button:hover { background: #2980b9; }
+    </style>
+</head>
+<body>
+
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <div class="container">
+        <a class="navbar-brand" href="/">🏠 聚落</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <div class="ms-auto d-flex align-items-center">
+                <form action="/search" method="get" class="search-form me-3">
+                    <input type="text" name="keyword" placeholder="搜索帖子..." required>
+                    <button type="submit">🔍</button>
+                </form>
+                <a href="/" class="btn btn-outline-light btn-sm me-3">← 返回首页</a>
+                <span th:if="${session.user}" class="d-flex align-items-center">
+                    <img th:src="@{${session.user.avatar}(v=${#dates.createNow().getTime()})}" class="nav-avatar me-2" alt="头像"
+                         onerror="this.onerror=null; this.src='https://api.dicebear.com/9.x/initials/svg?seed=default';">
+                    <a class="text-white text-decoration-none me-2"
+                       th:href="@{/user/{id}(id=${session.user.id})}"
+                       th:text="${session.user.nickname}">昵称</a>
+                    <a href="/logout" class="btn btn-sm btn-outline-danger">退出</a>
+                </span>
+                <span th:unless="${session.user}">
+                    <a href="/login" class="btn btn-sm btn-outline-light ms-2">登录</a>
+                    <a href="/register" class="btn btn-sm btn-outline-light ms-2">注册</a>
+                </span>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<div class="container mt-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="/">首页</a></li>
+            <li class="breadcrumb-item"><a th:href="@{/boards/{id}(id=${post.boardId})}">返回板块</a></li>
+            <li class="breadcrumb-item active" th:text="${post.title}">标题</li>
+        </ol>
+    </nav>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <h2 class="card-title" th:text="${post.title}">标题</h2>
+            <p class="text-muted small">
+                <a th:href="@{/user/{id}(id=${post.userId})}" class="text-decoration-none"
+                   th:text="${@userNicknameUtil.getNickname(post.userId)}">用户</a> ·
+                <span th:text="${#temporals.format(post.createdAt, 'yyyy-MM-dd HH:mm')}"></span>
+            </p>
+            <hr>
+            <div class="fs-6" style="white-space: pre-wrap;" th:text="${post.content}">内容</div>
+
+            <!-- 点赞区域 -->
+            <div class="d-flex align-items-center mt-3 pt-3 border-top">
+                <span th:if="${session.user != null}">
+                    <a th:if="${!isLiked}"
+                       th:href="@{/posts/{id}/like(id=${post.id})}"
+                       class="btn btn-sm btn-outline-danger me-2">❤️ 点赞</a>
+                    <a th:if="${isLiked}"
+                       th:href="@{/posts/{id}/unlike(id=${post.id})}"
+                       class="btn btn-sm btn-danger me-2">❤️ 已点赞</a>
+                </span>
+                <span th:unless="${session.user}">
+                    <a href="/login" class="btn btn-sm btn-outline-danger me-2">❤️ 点赞</a>
+                </span>
+                <span class="text-muted" th:text="${post.likeCount} + ' 次点赞'">0 次点赞</span>
+            </div>
+
+            <!-- 编辑和删除 -->
+            <div th:if="${session.user != null && (session.user.id == post.userId || session.user.role == 'admin')}" class="text-end mt-3">
+                <a th:if="${session.user.id == post.userId}"
+                   th:href="@{/posts/{id}/edit(id=${post.id})}"
+                   class="btn btn-outline-primary btn-sm me-2">✏️ 编辑</a>
+                <a th:href="@{/posts/{id}/delete(id=${post.id})}"
+                   onclick="return confirm('确定要删除这篇帖子吗？所有评论也会被删除。')"
+                   class="btn btn-outline-danger btn-sm">🗑️ 删除</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header bg-info text-white">
+            <h5 class="mb-0">评论 (<span th:text="${#lists.size(comments)}">0</span>)</h5>
+        </div>
+        <div class="card-body">
+            <div th:if="${session.user}" class="mb-3">
+                <form th:action="@{/posts/{id}/comments(id=${post.id})}" method="post">
+                    <div class="mb-2">
+                        <textarea name="content" class="form-control" rows="2" placeholder="写下你的评论..." required></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-info">发表评论</button>
+                </form>
+            </div>
+            <div th:unless="${session.user}" class="text-center py-2">
+                <a href="/login" class="btn btn-outline-info btn-sm">登录后发表评论</a>
+            </div>
+
+            <div th:if="${#lists.isEmpty(comments)}" class="text-center py-4 text-muted">
+                <p>还没有评论，快来抢沙发！</p>
+            </div>
+
+            <div th:each="comment : ${comments}">
+                <div class="card mb-2">
+                    <div class="card-body py-2">
+                        <p class="card-text small mb-1">
+                            <a th:href="@{/user/{id}(id=${comment.userId})}" class="text-decoration-none fw-bold"
+                               th:text="${@userNicknameUtil.getNickname(comment.userId)}">用户</a>
+                            <span class="text-muted ms-2" th:text="${#temporals.format(comment.createdAt, 'yyyy-MM-dd HH:mm')}"></span>
+                            <a th:if="${session.user != null && (session.user.id == comment.userId || session.user.role == 'admin')}"
+                               th:href="@{/comments/{id}/delete(id=${comment.id})}"
+                               onclick="return confirm('确定删除这条评论吗？')"
+                               class="text-danger ms-2 small">删除</a>
+                        </p>
+                        <p class="card-text" th:text="${comment.content}">评论内容</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

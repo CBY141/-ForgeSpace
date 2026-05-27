@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>聚落 - 首页</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .navbar-brand { font-weight: bold; }
+        .board-card { transition: transform 0.2s; }
+        .board-card:hover { transform: translateY(-2px); }
+        .official-badge { font-size: 0.75rem; }
+        .nav-avatar {
+            width: 30px; height: 30px; border-radius: 50%;
+            object-fit: cover; border: 2px solid white;
+        }
+        .search-form {
+            display: flex; align-items: center; gap: 5px;
+        }
+        .search-form input {
+            width: 180px; padding: 5px 10px; border: 1px solid #ccc;
+            border-radius: 4px; font-size: 14px;
+        }
+        .search-form button {
+            padding: 5px 12px; background: #3498db; color: white;
+            border: none; border-radius: 4px; cursor: pointer; font-size: 14px;
+        }
+        .search-form button:hover { background: #2980b9; }
+    </style>
+</head>
+<body>
+
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <div class="container">
+        <a class="navbar-brand" href="/">🏠 聚落 ForgeSpace</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav ms-auto align-items-center">
+                <li class="nav-item me-3">
+                    <form action="/search" method="get" class="search-form">
+                        <input type="text" name="keyword" placeholder="搜索帖子..." required>
+                        <button type="submit">🔍</button>
+                    </form>
+                </li>
+                <li class="nav-item" th:if="${session.user}">
+                    <img th:src="@{${session.user.avatar}(v=${#dates.createNow().getTime()})}" class="nav-avatar me-2" alt="头像"
+                         onerror="this.onerror=null; this.src='https://api.dicebear.com/9.x/initials/svg?seed=default';">
+                </li>
+                <li class="nav-item" th:if="${session.user}">
+                    <a class="nav-link text-light"
+                       th:href="@{/user/{id}(id=${session.user.id})}"
+                       th:text="${session.user.nickname}">昵称</a>
+                </li>
+                <li class="nav-item" th:if="${session.user}">
+                    <a class="nav-link" href="/logout">退出</a>
+                </li>
+                <li class="nav-item" th:unless="${session.user}">
+                    <a class="nav-link" href="/register">注册</a>
+                </li>
+                <li class="nav-item" th:unless="${session.user}">
+                    <a class="nav-link" href="/login">登录</a>
+                </li>
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<div class="container mt-4">
+    <div th:if="${session.user}" class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">创建新板块</h5>
+        </div>
+        <div class="card-body">
+            <form action="/boards" method="post">
+                <div class="mb-3">
+                    <label class="form-label">板块名称</label>
+                    <input type="text" name="name" class="form-control" placeholder="输入板块名称" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">板块描述</label>
+                    <input type="text" name="description" class="form-control" placeholder="简单描述这个板块">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">板块类型</label>
+                    <select name="type" class="form-select">
+                        <option value="normal">普通板块</option>
+                        <option value="official">官方板块</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary">创建板块</button>
+            </form>
+        </div>
+    </div>
+
+    <h3 class="mb-3">所有板块</h3>
+
+    <div th:if="${#lists.isEmpty(boards)}" class="text-center py-5 text-muted">
+        <p class="fs-5">还没有板块，快去创建一个吧！</p>
+    </div>
+
+    <div class="row" th:each="board : ${boards}">
+        <div class="col-md-6 mb-3">
+            <div class="card board-card h-100">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <a th:href="@{/boards/{id}(id=${board.id})}" class="text-decoration-none text-dark"
+                           th:text="${board.name}">板块名</a>
+                        <span th:if="${board.isOfficial == 1}" class="badge bg-danger official-badge ms-1">官方</span>
+                    </h5>
+                    <p class="card-text text-muted" th:text="${board.description}">板块描述</p>
+                </div>
+                <div class="card-footer text-muted small d-flex justify-content-between align-items-center">
+                    <span>创建于 <span th:text="${#temporals.format(board.createdAt, 'yyyy-MM-dd HH:mm')}">2026-01-01</span></span>
+                    <a th:if="${session.user != null && session.user.role == 'admin'}"
+                       th:href="@{/boards/{id}/delete(id=${board.id})}"
+                       onclick="return confirm('确定要删除这个板块吗？板块下的所有帖子也会被删除。')"
+                       class="btn btn-sm btn-outline-danger">🗑️ 删除</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
