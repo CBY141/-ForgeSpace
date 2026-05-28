@@ -1,4 +1,4 @@
-package com.webwar.webwar.modules.board.model.entity;
+package com.webwar.webwar.modules.message.model.entity;
 
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
@@ -8,23 +8,19 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 @Data
-@TableName("boards")
-public class Board {
+@TableName("messages")
+public class Message {
 
     @TableId(type = IdType.AUTO)
     private Long id;
 
-    private String name;
+    private Long senderId;
 
-    private String description;
+    private Long receiverId;
 
-    private Long creatorId;
+    private String content;
 
-    private String type;
-
-    private Integer isOfficial;
-
-    private Integer status;
+    private Integer isRead;
 
     private LocalDateTime createdAt;
 }

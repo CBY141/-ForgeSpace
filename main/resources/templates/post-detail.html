@@ -45,6 +45,13 @@
                     <a class="text-white text-decoration-none me-2"
                        th:href="@{/user/{id}(id=${session.user.id})}"
                        th:text="${session.user.nickname}">昵称</a>
+                    <a href="/my-posts" class="btn btn-sm btn-outline-light me-1">📝</a>
+                    <a href="/my-boards" class="btn btn-sm btn-outline-light me-1">📋</a>
+                    <a href="/messages" class="btn btn-sm btn-outline-light me-1">💬</a>
+                    <a th:if="${session.user.role == 'admin'}" href="/admin/review"
+                       class="btn btn-sm btn-outline-warning me-2">📝 审帖</a>
+                    <a th:if="${session.user.role == 'admin'}" href="/admin/board-review"
+                       class="btn btn-sm btn-outline-warning me-2">📋 审版</a>
                     <a href="/logout" class="btn btn-sm btn-outline-danger">退出</a>
                 </span>
                 <span th:unless="${session.user}">
@@ -104,6 +111,7 @@
         </div>
     </div>
 
+    <!-- 评论区 -->
     <div class="card">
         <div class="card-header bg-info text-white">
             <h5 class="mb-0">评论 (<span th:text="${#lists.size(comments)}">0</span>)</h5>

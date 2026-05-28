@@ -15,6 +15,8 @@ import com.webwar.webwar.modules.follow.mapper.FollowMapper;
 import com.webwar.webwar.modules.follow.model.entity.Follow;
 import com.webwar.webwar.modules.like.mapper.LikeMapper;
 import com.webwar.webwar.modules.like.model.entity.Like;
+import com.webwar.webwar.modules.message.mapper.MessageMapper;
+import com.webwar.webwar.modules.message.model.entity.Message;
 import com.webwar.webwar.modules.post.mapper.PostMapper;
 import com.webwar.webwar.modules.post.model.entity.Post;
 import com.webwar.webwar.modules.post.service.impl.PostServiceImpl;
@@ -35,8 +37,8 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Controller
 @RequiredArgsConstructor
@@ -53,20 +55,23 @@ public class PageController {
     private final UserMapper userMapper;
     private final FollowMapper followMapper;
     private final LikeMapper likeMapper;
+    private final MessageMapper messageMapper;
     private final PasswordEncoder passwordEncoder;
 
     @Value("${file.upload.dir}")
     private String uploadDir;
 
-    // 首页
+    // ==================== 首页 ====================
     @GetMapping("/")
     public String index(Model model) {
-        List<Board> boards = boardMapper.selectList(null);
+        LambdaQueryWrapper<Board> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Board::getStatus, 1);
+        List<Board> boards = boardMapper.selectList(wrapper);
         model.addAttribute("boards", boards);
         return "index";
     }
 
-    // 板块详情
+    // ==================== 板块详情 ====================
     @GetMapping("/boards/{boardId}")
     public String boardDetail(@PathVariable Long boardId,
                               @RequestParam(defaultValue = "1") int page,
@@ -77,7 +82,9 @@ public class PageController {
         model.addAttribute("board", board);
 
         LambdaQueryWrapper<Post> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(Post::getBoardId, boardId).orderByDesc(Post::getCreatedAt);
+        wrapper.eq(Post::getBoardId, boardId)
+                .eq(Post::getStatus, 1)
+                .orderByDesc(Post::getCreatedAt);
         Page<Post> postPage = postMapper.selectPage(new Page<>(page, size), wrapper);
 
         model.addAttribute("posts", postPage.getRecords());
@@ -88,7 +95,7 @@ public class PageController {
         return "board-detail";
     }
 
-    // 帖子详情
+    // ==================== 帖子详情 ====================
     @GetMapping("/posts/{postId}")
     public String postDetail(@PathVariable Long postId, Model model, HttpSession session) {
         Post post = postMapper.selectById(postId);
@@ -112,7 +119,7 @@ public class PageController {
         return "post-detail";
     }
 
-    // 点赞
+    // ==================== 点赞 ====================
     @GetMapping("/posts/{postId}/like")
     public String likePost(@PathVariable Long postId, HttpSession session) {
         User user = (User) session.getAttribute("user");
@@ -131,7 +138,6 @@ public class PageController {
         return "redirect:/posts/" + postId;
     }
 
-    // 取消点赞
     @GetMapping("/posts/{postId}/unlike")
     public String unlikePost(@PathVariable Long postId, HttpSession session) {
         User user = (User) session.getAttribute("user");
@@ -147,7 +153,7 @@ public class PageController {
         return "redirect:/posts/" + postId;
     }
 
-    // 搜索帖子
+    // ==================== 搜索 ====================
     @GetMapping("/search")
     public String search(@RequestParam String keyword,
                          @RequestParam(defaultValue = "1") int page,
@@ -157,6 +163,7 @@ public class PageController {
         wrapper.like(Post::getTitle, keyword)
                 .or()
                 .like(Post::getContent, keyword)
+                .eq(Post::getStatus, 1)
                 .orderByDesc(Post::getCreatedAt);
         Page<Post> postPage = postMapper.selectPage(new Page<>(page, size), wrapper);
 
@@ -168,7 +175,7 @@ public class PageController {
         return "search-result";
     }
 
-    // 用户个人主页
+    // ==================== 用户主页 ====================
     @GetMapping("/user/{userId}")
     public String userProfile(@PathVariable Long userId, Model model, HttpSession session) {
         User profileUser = userService.getById(userId);
@@ -176,7 +183,9 @@ public class PageController {
         model.addAttribute("profileUser", profileUser);
 
         LambdaQueryWrapper<Post> postWrapper = new LambdaQueryWrapper<>();
-        postWrapper.eq(Post::getUserId, userId).orderByDesc(Post::getCreatedAt);
+        postWrapper.eq(Post::getUserId, userId)
+                .eq(Post::getStatus, 1)
+                .orderByDesc(Post::getCreatedAt);
         model.addAttribute("posts", postMapper.selectList(postWrapper));
 
         LambdaQueryWrapper<Comment> commentWrapper = new LambdaQueryWrapper<>();
@@ -204,7 +213,30 @@ public class PageController {
         return "profile";
     }
 
-    // 个人设置页面
+    // ==================== 我的帖子/我的板块 ====================
+    @GetMapping("/my-posts")
+    public String myPosts(Model model, HttpSession session) {
+        User user = (User) session.getAttribute("user");
+        if (user == null) return "redirect:/login";
+
+        LambdaQueryWrapper<Post> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Post::getUserId, user.getId()).orderByDesc(Post::getCreatedAt);
+        model.addAttribute("posts", postMapper.selectList(wrapper));
+        return "my-posts";
+    }
+
+    @GetMapping("/my-boards")
+    public String myBoards(Model model, HttpSession session) {
+        User user = (User) session.getAttribute("user");
+        if (user == null) return "redirect:/login";
+
+        LambdaQueryWrapper<Board> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Board::getCreatorId, user.getId()).orderByDesc(Board::getCreatedAt);
+        model.addAttribute("boards", boardMapper.selectList(wrapper));
+        return "my-boards";
+    }
+
+    // ==================== 个人设置 ====================
     @GetMapping("/user/{userId}/settings")
     public String settingsPage(@PathVariable Long userId, Model model, HttpSession session) {
         User sessionUser = (User) session.getAttribute("user");
@@ -216,7 +248,6 @@ public class PageController {
         return "settings";
     }
 
-    // 处理个人设置（修改昵称或密码）
     @PostMapping("/user/{userId}/settings")
     public String handleSettings(@PathVariable Long userId,
                                  @RequestParam String action,
@@ -255,7 +286,7 @@ public class PageController {
         return "settings";
     }
 
-    // 关注用户
+    // ==================== 关注 ====================
     @GetMapping("/user/{userId}/follow")
     public String followUser(@PathVariable Long userId, HttpSession session) {
         User sessionUser = (User) session.getAttribute("user");
@@ -274,7 +305,6 @@ public class PageController {
         return "redirect:/user/" + userId;
     }
 
-    // 取消关注
     @GetMapping("/user/{userId}/unfollow")
     public String unfollowUser(@PathVariable Long userId, HttpSession session) {
         User sessionUser = (User) session.getAttribute("user");
@@ -287,7 +317,6 @@ public class PageController {
         return "redirect:/user/" + userId;
     }
 
-    // 关注列表
     @GetMapping("/user/{userId}/following")
     public String followingList(@PathVariable Long userId, Model model) {
         User profileUser = userService.getById(userId);
@@ -307,7 +336,6 @@ public class PageController {
         return "follow-list";
     }
 
-    // 粉丝列表
     @GetMapping("/user/{userId}/followers")
     public String followerList(@PathVariable Long userId, Model model) {
         User profileUser = userService.getById(userId);
@@ -327,7 +355,7 @@ public class PageController {
         return "follow-list";
     }
 
-    // 修改头像页面
+    // ==================== 头像 ====================
     @GetMapping("/user/{userId}/avatar")
     public String editAvatarPage(@PathVariable Long userId, Model model, HttpSession session) {
         User sessionUser = (User) session.getAttribute("user");
@@ -339,7 +367,6 @@ public class PageController {
         return "edit-avatar";
     }
 
-    // 处理头像上传
     @PostMapping("/user/{userId}/avatar")
     public String editAvatar(@PathVariable Long userId,
                              @RequestParam("file") MultipartFile file,
@@ -374,7 +401,6 @@ public class PageController {
         return "redirect:/user/" + userId;
     }
 
-    // 恢复默认头像
     @GetMapping("/user/{userId}/avatar/default")
     public String resetAvatar(@PathVariable Long userId, HttpSession session) {
         User sessionUser = (User) session.getAttribute("user");
@@ -391,11 +417,10 @@ public class PageController {
         return "redirect:/user/" + userId;
     }
 
-    // 注册页面
+    // ==================== 注册/登录/退出 ====================
     @GetMapping("/register")
     public String registerPage() { return "register"; }
 
-    // 处理注册
     @PostMapping("/register")
     public String register(@RequestParam String username,
                            @RequestParam String password,
@@ -414,11 +439,9 @@ public class PageController {
         }
     }
 
-    // 登录页面
     @GetMapping("/login")
     public String loginPage() { return "login"; }
 
-    // 处理登录
     @PostMapping("/login")
     public String login(@RequestParam String username,
                         @RequestParam String password,
@@ -438,21 +461,29 @@ public class PageController {
         }
     }
 
-    // 退出
     @GetMapping("/logout")
     public String logout(HttpSession session) {
         session.removeAttribute("user");
         return "redirect:/";
     }
 
-    // 发帖
+    // ==================== 发帖 ====================
     @PostMapping("/boards/{boardId}/posts")
     public String createPost(@PathVariable Long boardId,
                              @RequestParam String title,
                              @RequestParam String content,
-                             HttpSession session) {
+                             HttpSession session,
+                             RedirectAttributes redirectAttributes) {
         User user = (User) session.getAttribute("user");
         if (user == null) return "redirect:/login";
+
+        Board board = boardMapper.selectById(boardId);
+        if (board == null) return "redirect:/";
+
+        if ("official".equals(board.getType()) && !user.isAdmin()) {
+            return "redirect:/boards/" + boardId;
+        }
+
         Post post = new Post();
         post.setBoardId(boardId);
         post.setUserId(user.getId());
@@ -460,37 +491,50 @@ public class PageController {
         post.setContent(content);
         post.setCommentCount(0);
         post.setLikeCount(0);
+
+        if (user.isAdmin()) {
+            post.setStatus(1);
+            redirectAttributes.addFlashAttribute("postSuccess", "发布成功！");
+        } else {
+            post.setStatus(0);
+            redirectAttributes.addFlashAttribute("postSuccess", "发布成功，请等待管理员审核！");
+        }
+
         postMapper.insert(post);
         return "redirect:/boards/" + boardId;
     }
 
-    // 创建板块
+    // ==================== 创建板块 ====================
     @PostMapping("/boards")
     public String createBoard(@RequestParam String name,
                               @RequestParam String description,
                               @RequestParam(defaultValue = "normal") String type,
-                              HttpSession session) {
+                              HttpSession session,
+                              RedirectAttributes redirectAttributes) {
         User user = (User) session.getAttribute("user");
         if (user == null) return "redirect:/login";
 
+        if ("official".equals(type) && !user.isAdmin()) {
+            redirectAttributes.addFlashAttribute("boardError", "官方板块仅管理员可创建！");
+            return "redirect:/";
+        }
+
         Board board = boardFactory.getStrategy(type)
                 .createBoard(name, description, user.getId());
+
+        if (user.isAdmin()) {
+            board.setStatus(1);
+            redirectAttributes.addFlashAttribute("boardSuccess", "板块创建成功！");
+        } else {
+            board.setStatus(0);
+            redirectAttributes.addFlashAttribute("boardSuccess", "板块申请已提交，请等待管理员审核！");
+        }
+
         boardMapper.insert(board);
         return "redirect:/";
     }
 
-    // 管理员删除板块
-    @GetMapping("/boards/{boardId}/delete")
-    public String deleteBoard(@PathVariable Long boardId, HttpSession session) {
-        User user = (User) session.getAttribute("user");
-        if (user == null) return "redirect:/login";
-        if (!user.isAdmin()) return "redirect:/";
-
-        boardMapper.deleteById(boardId);
-        return "redirect:/";
-    }
-
-    // 发表评论
+    // ==================== 发表评论 ====================
     @PostMapping("/posts/{postId}/comments")
     public String createComment(@PathVariable Long postId,
                                 @RequestParam String content,
@@ -504,7 +548,7 @@ public class PageController {
         return "redirect:/posts/" + postId;
     }
 
-    // 编辑帖子页面
+    // ==================== 编辑帖子 ====================
     @GetMapping("/posts/{postId}/edit")
     public String editPostPage(@PathVariable Long postId, Model model, HttpSession session) {
         User user = (User) session.getAttribute("user");
@@ -521,7 +565,6 @@ public class PageController {
         return "post-edit";
     }
 
-    // 处理编辑提交
     @PostMapping("/posts/{postId}/edit")
     public String editPost(@PathVariable Long postId,
                            @RequestParam String title,
@@ -544,7 +587,7 @@ public class PageController {
         return "redirect:/posts/" + postId;
     }
 
-    // 删除帖子
+    // ==================== 删除帖子 ====================
     @GetMapping("/posts/{postId}/delete")
     public String deletePost(@PathVariable Long postId, HttpSession session) {
         User user = (User) session.getAttribute("user");
@@ -557,7 +600,7 @@ public class PageController {
         return "redirect:/boards/" + post.getBoardId();
     }
 
-    // 删除评论
+    // ==================== 删除评论 ====================
     @GetMapping("/comments/{commentId}/delete")
     public String deleteComment(@PathVariable Long commentId, HttpSession session) {
         User user = (User) session.getAttribute("user");
@@ -569,5 +612,221 @@ public class PageController {
             return "redirect:/posts/" + comment.getPostId();
         }
         return "redirect:/";
+    }
+
+    // ==================== 管理员审核帖子 ====================
+    @GetMapping("/admin/review")
+    public String reviewPage(Model model, HttpSession session) {
+        User user = (User) session.getAttribute("user");
+        if (user == null || !user.isAdmin()) return "redirect:/";
+
+        LambdaQueryWrapper<Post> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Post::getStatus, 0).orderByDesc(Post::getCreatedAt);
+        List<Post> pendingPosts = postMapper.selectList(wrapper);
+        model.addAttribute("posts", pendingPosts);
+        return "admin-review";
+    }
+
+    @GetMapping("/admin/review/{postId}/approve")
+    public String approvePost(@PathVariable Long postId, HttpSession session) {
+        User user = (User) session.getAttribute("user");
+        if (user == null || !user.isAdmin()) return "redirect:/";
+
+        Post post = postMapper.selectById(postId);
+        if (post != null) {
+            post.setStatus(1);
+            postMapper.updateById(post);
+        }
+        return "redirect:/admin/review";
+    }
+
+    @GetMapping("/admin/review/{postId}/reject")
+    public String rejectPost(@PathVariable Long postId, HttpSession session) {
+        User user = (User) session.getAttribute("user");
+        if (user == null || !user.isAdmin()) return "redirect:/";
+
+        Post post = postMapper.selectById(postId);
+        if (post != null) {
+            post.setStatus(2);
+            postMapper.updateById(post);
+        }
+        return "redirect:/admin/review";
+    }
+
+    // ==================== 管理员审核板块 ====================
+    @GetMapping("/admin/board-review")
+    public String boardReviewPage(Model model, HttpSession session) {
+        User user = (User) session.getAttribute("user");
+        if (user == null || !user.isAdmin()) return "redirect:/";
+
+        LambdaQueryWrapper<Board> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Board::getStatus, 0).orderByDesc(Board::getCreatedAt);
+        List<Board> pendingBoards = boardMapper.selectList(wrapper);
+        model.addAttribute("boards", pendingBoards);
+        return "admin-board-review";
+    }
+
+    @GetMapping("/admin/board-review/{boardId}/approve")
+    public String approveBoard(@PathVariable Long boardId, HttpSession session) {
+        User user = (User) session.getAttribute("user");
+        if (user == null || !user.isAdmin()) return "redirect:/";
+
+        Board board = boardMapper.selectById(boardId);
+        if (board != null) {
+            board.setStatus(1);
+            boardMapper.updateById(board);
+        }
+        return "redirect:/admin/board-review";
+    }
+
+    @GetMapping("/admin/board-review/{boardId}/reject")
+    public String rejectBoard(@PathVariable Long boardId, HttpSession session) {
+        User user = (User) session.getAttribute("user");
+        if (user == null || !user.isAdmin()) return "redirect:/";
+
+        Board board = boardMapper.selectById(boardId);
+        if (board != null) {
+            board.setStatus(2);
+            boardMapper.updateById(board);
+        }
+        return "redirect:/admin/board-review";
+    }
+
+    // ==================== 管理员删除板块 ====================
+    @GetMapping("/boards/{boardId}/delete")
+    public String deleteBoard(@PathVariable Long boardId, HttpSession session) {
+        User user = (User) session.getAttribute("user");
+        if (user == null) return "redirect:/login";
+        if (!user.isAdmin()) return "redirect:/";
+
+        boardMapper.deleteById(boardId);
+        return "redirect:/";
+    }
+
+    // ==================== 私聊列表 ====================
+    @GetMapping("/messages")
+    public String messagesPage(Model model, HttpSession session) {
+        User user = (User) session.getAttribute("user");
+        if (user == null) return "redirect:/login";
+
+        // 查询所有与当前用户相关的私聊
+        LambdaQueryWrapper<Message> sentWrapper = new LambdaQueryWrapper<>();
+        sentWrapper.eq(Message::getSenderId, user.getId());
+        List<Message> sentMessages = messageMapper.selectList(sentWrapper);
+
+        LambdaQueryWrapper<Message> receivedWrapper = new LambdaQueryWrapper<>();
+        receivedWrapper.eq(Message::getReceiverId, user.getId());
+        List<Message> receivedMessages = messageMapper.selectList(receivedWrapper);
+
+        // 合并所有消息，按会话去重
+        Map<Long, Message> chatMap = new LinkedHashMap<>();
+        List<Message> allMessages = new ArrayList<>();
+        allMessages.addAll(sentMessages);
+        allMessages.addAll(receivedMessages);
+        allMessages.sort((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()));
+
+        for (Message msg : allMessages) {
+            Long otherUserId = msg.getSenderId().equals(user.getId()) ? msg.getReceiverId() : msg.getSenderId();
+            chatMap.putIfAbsent(otherUserId, msg);
+        }
+
+        // 获取对方用户信息
+        List<Map<String, Object>> chats = new ArrayList<>();
+        for (Map.Entry<Long, Message> entry : chatMap.entrySet()) {
+            User otherUser = userMapper.selectById(entry.getKey());
+            if (otherUser != null) {
+                Map<String, Object> chat = new HashMap<>();
+                chat.put("user", otherUser);
+                chat.put("lastMessage", entry.getValue());
+                chats.add(chat);
+            }
+        }
+
+        model.addAttribute("chats", chats);
+        return "messages";
+    }
+
+    // ==================== 聊天详情页 ====================
+    @GetMapping("/chat/{otherUserId}")
+    public String chatPage(@PathVariable Long otherUserId, Model model, HttpSession session) {
+        User user = (User) session.getAttribute("user");
+        if (user == null) return "redirect:/login";
+
+        User otherUser = userMapper.selectById(otherUserId);
+        if (otherUser == null) return "redirect:/messages";
+
+        // 获取双方所有消息
+        LambdaQueryWrapper<Message> wrapper = new LambdaQueryWrapper<>();
+        wrapper.and(w -> w
+                .and(w1 -> w1.eq(Message::getSenderId, user.getId()).eq(Message::getReceiverId, otherUserId))
+                .or(w2 -> w2.eq(Message::getSenderId, otherUserId).eq(Message::getReceiverId, user.getId()))
+        ).orderByAsc(Message::getCreatedAt);
+        List<Message> messages = messageMapper.selectList(wrapper);
+
+        // 判断是否互相关注
+        boolean mutualFollow = isMutualFollow(user.getId(), otherUserId);
+
+        // 陌生人限制：我发的消息条数
+        long mySentCount = messages.stream().filter(m -> m.getSenderId().equals(user.getId())).count();
+        boolean canSend = mutualFollow || mySentCount < 3;
+
+        model.addAttribute("otherUser", otherUser);
+        model.addAttribute("messages", messages);
+        model.addAttribute("mutualFollow", mutualFollow);
+        model.addAttribute("canSend", canSend);
+        model.addAttribute("remaining", mutualFollow ? -1 : (int)(3 - mySentCount));
+
+        return "chat";
+    }
+
+    // ==================== 发送消息 ====================
+    @PostMapping("/chat/{otherUserId}/send")
+    public String sendMessage(@PathVariable Long otherUserId,
+                              @RequestParam String content,
+                              HttpSession session,
+                              RedirectAttributes redirectAttributes) {
+        User user = (User) session.getAttribute("user");
+        if (user == null) return "redirect:/login";
+
+        // 校验字数
+        if (content.length() > 50) {
+            redirectAttributes.addFlashAttribute("msgError", "消息不能超过50字！");
+            return "redirect:/chat/" + otherUserId;
+        }
+
+        boolean mutualFollow = isMutualFollow(user.getId(), otherUserId);
+
+        if (!mutualFollow) {
+            LambdaQueryWrapper<Message> wrapper = new LambdaQueryWrapper<>();
+            wrapper.eq(Message::getSenderId, user.getId())
+                    .eq(Message::getReceiverId, otherUserId);
+            long sentCount = messageMapper.selectCount(wrapper);
+            if (sentCount >= 3) {
+                redirectAttributes.addFlashAttribute("msgError", "对方尚未回复，你最多只能发3条消息！");
+                return "redirect:/chat/" + otherUserId;
+            }
+        }
+
+        Message message = new Message();
+        message.setSenderId(user.getId());
+        message.setReceiverId(otherUserId);
+        message.setContent(content);
+        message.setIsRead(0);
+        messageMapper.insert(message);
+
+        return "redirect:/chat/" + otherUserId;
+    }
+
+    // ==================== 辅助方法 ====================
+    private boolean isMutualFollow(Long userId1, Long userId2) {
+        LambdaQueryWrapper<Follow> wrapper1 = new LambdaQueryWrapper<>();
+        wrapper1.eq(Follow::getFollowerId, userId1).eq(Follow::getFolloweeId, userId2);
+        boolean follow1 = followMapper.selectCount(wrapper1) > 0;
+
+        LambdaQueryWrapper<Follow> wrapper2 = new LambdaQueryWrapper<>();
+        wrapper2.eq(Follow::getFollowerId, userId2).eq(Follow::getFolloweeId, userId1);
+        boolean follow2 = followMapper.selectCount(wrapper2) > 0;
+
+        return follow1 && follow2;
     }
 }

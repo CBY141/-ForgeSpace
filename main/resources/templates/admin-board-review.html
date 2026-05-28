@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>板块审核 - 聚落</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+  <div class="container">
+    <a class="navbar-brand" href="/">🏠 聚落</a>
+    <div class="ms-auto">
+      <a href="/" class="btn btn-outline-light btn-sm">← 返回首页</a>
+      <a href="/admin/review" class="btn btn-outline-warning btn-sm ms-2">📝 审帖</a>
+    </div>
+  </div>
+</nav>
+
+<div class="container mt-4">
+  <h3>📋 待审核板块</h3>
+
+  <div th:if="${#lists.isEmpty(boards)}" class="text-center py-5 text-muted">
+    <p>暂无待审核板块</p>
+  </div>
+
+  <div th:each="board : ${boards}">
+    <div class="card mb-3">
+      <div class="card-body">
+        <h5 class="card-title" th:text="${board.name}">板块名</h5>
+        <p class="text-muted small">
+          创建者ID: <span th:text="${board.creatorId}">1</span> ·
+          类型: <span th:text="${board.type}">normal</span> ·
+          <span th:text="${#temporals.format(board.createdAt, 'yyyy-MM-dd HH:mm')}"></span>
+        </p>
+        <p class="card-text" th:text="${board.description}">描述</p>
+        <div class="mt-2">
+          <a th:href="@{/admin/board-review/{id}/approve(id=${board.id})}"
+             class="btn btn-success btn-sm">✅ 通过</a>
+          <a th:href="@{/admin/board-review/{id}/reject(id=${board.id})}"
+             class="btn btn-danger btn-sm ms-2">❌ 拒绝</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

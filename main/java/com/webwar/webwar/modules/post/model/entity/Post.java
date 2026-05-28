@@ -26,5 +26,7 @@ public class Post {
 
     private Integer likeCount;
 
+    private Integer status;
+
     private LocalDateTime createdAt;
 }

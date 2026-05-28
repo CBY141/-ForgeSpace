@@ -49,6 +49,13 @@
                     <a class="text-white text-decoration-none me-2"
                        th:href="@{/user/{id}(id=${session.user.id})}"
                        th:text="${session.user.nickname}">昵称</a>
+                    <a href="/my-posts" class="btn btn-sm btn-outline-light me-1">📝</a>
+                    <a href="/my-boards" class="btn btn-sm btn-outline-light me-1">📋</a>
+                    <a href="/messages" class="btn btn-sm btn-outline-light me-1">💬</a>
+                    <a th:if="${session.user.role == 'admin'}" href="/admin/review"
+                       class="btn btn-sm btn-outline-warning me-2">📝 审帖</a>
+                    <a th:if="${session.user.role == 'admin'}" href="/admin/board-review"
+                       class="btn btn-sm btn-outline-warning me-2">📋 审版</a>
                     <a href="/logout" class="btn btn-sm btn-outline-danger">退出</a>
                 </span>
                 <span th:unless="${session.user}">
@@ -77,7 +84,6 @@
                         用户名：<span th:text="${profileUser.username}">username</span> ·
                         注册于 <span th:text="${#temporals.format(profileUser.createdAt, 'yyyy-MM-dd')}">2026-01-01</span>
                     </p>
-                    <!-- 关注/粉丝统计 -->
                     <p class="mb-2">
                         <a th:href="@{/user/{id}/following(id=${profileUser.id})}" class="text-decoration-none me-3">
                             关注 <span class="badge bg-primary" th:text="${followingCount}">0</span>
@@ -86,8 +92,9 @@
                             粉丝 <span class="badge bg-info" th:text="${followerCount}">0</span>
                         </a>
                     </p>
-                    <!-- 关注/取消关注按钮 + 修改头像 -->
+                    <!-- 操作按钮 -->
                     <div class="mt-2">
+                        <!-- 陌生人：关注 + 发私信 -->
                         <span th:if="${session.user != null && session.user.id != profileUser.id}">
                             <a th:if="${!isFollowing}"
                                th:href="@{/user/{id}/follow(id=${profileUser.id})}"
@@ -95,13 +102,15 @@
                             <a th:if="${isFollowing}"
                                th:href="@{/user/{id}/unfollow(id=${profileUser.id})}"
                                class="btn btn-sm btn-outline-secondary">✅ 已关注</a>
+                            <a th:href="@{/chat/{id}(id=${profileUser.id})}"
+                               class="btn btn-sm btn-outline-success ms-1">💬 发私信</a>
                         </span>
-                        <a th:if="${session.user != null && session.user.id == profileUser.id}"
-                           th:href="@{/user/{id}/settings(id=${profileUser.id})}"
-                           class="btn btn-outline-secondary btn-sm">⚙️ 设置</a>
-                        <a th:if="${session.user != null && session.user.id == profileUser.id}"
-                           th:href="@{/user/{id}/avatar(id=${profileUser.id})}"
-                           class="btn btn-outline-primary btn-sm ms-2">🖼️ 修改头像</a>
+                        <!-- 本人：我的帖子、设置、修改头像 -->
+                        <span th:if="${session.user != null && session.user.id == profileUser.id}">
+                            <a th:href="@{/my-posts}" class="btn btn-outline-info btn-sm">📝 我的帖子</a>
+                            <a th:href="@{/user/{id}/settings(id=${profileUser.id})}" class="btn btn-outline-secondary btn-sm ms-1">⚙️ 设置</a>
+                            <a th:href="@{/user/{id}/avatar(id=${profileUser.id})}" class="btn btn-outline-primary btn-sm ms-1">🖼️ 修改头像</a>
+                        </span>
                     </div>
                 </div>
             </div>
@@ -123,6 +132,7 @@
                            th:text="${post.title}">帖子标题</a>
                         <br>
                         <small class="text-muted">
+                            <span th:text="${post.likeCount}">0</span> 次点赞 ·
                             <span th:text="${post.commentCount}">0</span> 条评论 ·
                             <span th:text="${#temporals.format(post.createdAt, 'yyyy-MM-dd HH:mm')}"></span>
                         </small>
