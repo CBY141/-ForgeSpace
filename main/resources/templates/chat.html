@@ -7,7 +7,6 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         .nav-avatar { width: 30px; height: 30px; border-radius: 50%; object-fit: cover; border: 2px solid white; }
-        .chat-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
         .message-bubble { max-width: 70%; padding: 10px 15px; border-radius: 15px; margin-bottom: 10px; word-break: break-word; }
         .message-sent { background: #3498db; color: white; margin-left: auto; }
         .message-received { background: #ecf0f1; color: #2c3e50; }
@@ -21,10 +20,10 @@
         <a class="navbar-brand" href="/">🏠 聚落</a>
         <div class="ms-auto">
             <a href="/messages" class="btn btn-outline-light btn-sm me-2">← 返回私信</a>
-            <span th:if="${session.user}">
-                <img th:src="@{${session.user.avatar}(v=${#dates.createNow().getTime()})}" class="nav-avatar me-2" alt="头像"
+            <span th:if="${currentUser}">
+                <img th:src="@{${currentUser.avatar}(v=${#dates.createNow().getTime()})}" class="nav-avatar me-2" alt="头像"
                      onerror="this.onerror=null; this.src='https://api.dicebear.com/9.x/initials/svg?seed=default';">
-                <a th:href="@{/user/{id}(id=${session.user.id})}" th:text="${session.user.nickname}" class="text-white text-decoration-none me-2"></a>
+                <a th:href="@{/user/{id}(id=${currentUser.id})}" th:text="${currentUser.nickname}" class="text-white text-decoration-none me-2"></a>
                 <a href="/logout" class="btn btn-sm btn-outline-danger">退出</a>
             </span>
         </div>
@@ -32,34 +31,42 @@
 </nav>
 
 <div class="container mt-4">
-    <h4>与 <span th:text="${otherUser.nickname}">用户</span> 的私信</h4>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4>与 <span th:text="${otherUser.nickname}">用户</span> 的私信</h4>
+        <a th:href="@{/user/{id}(id=${otherUser.id})}" class="btn btn-sm btn-outline-secondary">👤 查看主页</a>
+    </div>
 
-    <!-- 互关状态提示 -->
     <div th:if="${mutualFollow}" class="alert alert-success py-1">✅ 你们已互相关注，可自由聊天</div>
     <div th:unless="${mutualFollow}" class="alert alert-warning py-1">
         ⚠️ 对方尚未回复，你还能发送 <strong th:text="${remaining}">3</strong> 条消息（每条最多50字）
     </div>
 
-    <!-- 消息列表 -->
+    <!-- 隐藏的 ID 信息 -->
+    <input type="hidden" id="currentUserIdHolder" th:value="${currentUserId}">
+    <input type="hidden" id="otherUserIdHolder" th:value="${otherUserId}">
+    <!-- 当前已显示的最后一条消息 ID（用于拉取新消息） -->
+    <input type="hidden" id="lastMessageId" th:value="${messages.size() > 0 ? messages.get(messages.size()-1).id : 0}">
+
     <div class="chat-box mb-3" id="chatBox">
         <div th:if="${#lists.isEmpty(messages)}" class="text-center text-muted py-5">
             暂无消息，发送第一条私信吧！
         </div>
         <div th:each="msg : ${messages}">
-            <div class="d-flex" th:classappend="${msg.senderId == session.user.id} ? 'justify-content-end' : 'justify-content-start'">
+            <div class="d-flex" th:classappend="${msg.senderId == currentUserId} ? 'justify-content-end' : 'justify-content-start'">
                 <div class="message-bubble"
-                     th:classappend="${msg.senderId == session.user.id} ? 'message-sent' : 'message-received'"
+                     th:classappend="${msg.senderId == currentUserId} ? 'message-sent' : 'message-received'"
                      th:text="${msg.content}"></div>
             </div>
         </div>
     </div>
 
-    <!-- 错误提示 -->
     <div th:if="${msgError}" class="alert alert-danger py-1" th:text="${msgError}"></div>
 
-    <!-- 发送框 -->
-    <form th:if="${canSend}" th:action="@{/chat/{id}/send(id=${otherUser.id})}" method="post" class="d-flex gap-2">
-        <input type="text" name="content" class="form-control" placeholder="输入消息（最多50字）..." maxlength="50" required>
+    <form th:if="${canSend}" th:action="@{/chat/{id}/send(id=${otherUser.id})}" method="post" class="d-flex gap-2" id="sendForm">
+        <input type="text" name="content" class="form-control"
+               placeholder="输入消息..."
+               th:maxlength="${mutualFollow ? 2000 : 50}"
+               required>
         <button type="submit" class="btn btn-primary">发送</button>
     </form>
     <div th:unless="${canSend}" class="alert alert-danger">
@@ -68,5 +75,70 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    // 页面加载后滚动到底部
+    window.onload = function() {
+        var chatBox = document.getElementById('chatBox');
+        if (chatBox) chatBox.scrollTop = chatBox.scrollHeight;
+    };
+</script>
+
+<!-- 自动拉取新消息（每 2 秒） -->
+<script>
+    const currentUserId = parseInt(document.getElementById('currentUserIdHolder').value);
+    const otherUserId = parseInt(document.getElementById('otherUserIdHolder').value);
+    let lastMessageId = parseInt(document.getElementById('lastMessageId').value);
+
+    async function fetchNewMessages() {
+        try {
+            const response = await fetch('/chat/' + otherUserId + '/new-messages?sinceId=' + lastMessageId);
+            if (!response.ok) return;
+            const newMessages = await response.json();
+            if (newMessages.length > 0) {
+                const chatBox = document.getElementById('chatBox');
+                for (const msg of newMessages) {
+                    const isMine = msg.senderId === currentUserId;
+                    const bubble = document.createElement('div');
+                    bubble.className = 'd-flex ' + (isMine ? 'justify-content-end' : 'justify-content-start');
+                    bubble.innerHTML = '<div class="message-bubble ' + (isMine ? 'message-sent' : 'message-received') + '">' + msg.content + '</div>';
+                    chatBox.appendChild(bubble);
+                    lastMessageId = msg.id;
+                }
+                chatBox.scrollTop = chatBox.scrollHeight;
+            }
+        } catch(e) {
+            console.error('拉取新消息失败：', e);
+        }
+    }
+
+    // 启动定时轮询
+    setInterval(fetchNewMessages, 2000);
+</script>
+
+<!-- WebSocket（保留，如果能用更好） -->
+<script>
+    const wsUrl = 'ws://localhost:8081/ws/chat?userId=' + currentUserId;
+    console.log('🔌 WebSocket 备用连接：' + wsUrl);
+    let ws = null;
+    try {
+        ws = new WebSocket(wsUrl);
+        ws.onopen = () => console.log('✅ WebSocket 已连接（备用）');
+        ws.onmessage = (event) => {
+            console.log('📩 WebSocket 收到消息：' + event.data);
+            try {
+                const data = JSON.parse(event.data);
+                if (data.type === 'newMessage' && data.senderId == otherUserId) {
+                    // WebSocket 收到消息时，立即拉取一次最新消息
+                    fetchNewMessages();
+                }
+            } catch(e) { console.error(e); }
+        };
+        ws.onclose = () => console.log('🔴 WebSocket 断开');
+        ws.onerror = (e) => console.error('WebSocket 错误', e);
+    } catch(e) {
+        console.log('WebSocket 初始化失败，使用轮询模式');
+    }
+</script>
 </body>
 </html>

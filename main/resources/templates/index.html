@@ -44,37 +44,44 @@
                         <button type="submit">🔍</button>
                     </form>
                 </li>
-                <li class="nav-item" th:if="${session.user}">
-                    <img th:src="@{${session.user.avatar}(v=${#dates.createNow().getTime()})}" class="nav-avatar me-2" alt="头像"
+                <!-- 已登录 -->
+                <li class="nav-item" th:if="${currentUser}">
+                    <img th:src="@{${currentUser.avatar}(v=${#dates.createNow().getTime()})}" class="nav-avatar me-2" alt="头像"
                          onerror="this.onerror=null; this.src='https://api.dicebear.com/9.x/initials/svg?seed=default';">
                 </li>
-                <li class="nav-item" th:if="${session.user}">
+                <li class="nav-item" th:if="${currentUser}">
                     <a class="nav-link text-light"
-                       th:href="@{/user/{id}(id=${session.user.id})}"
-                       th:text="${session.user.nickname}">昵称</a>
+                       th:href="@{/user/{id}(id=${currentUser.id})}"
+                       th:text="${currentUser.nickname}">昵称</a>
                 </li>
-                <li class="nav-item" th:if="${session.user}">
+                <li class="nav-item" th:if="${currentUser}">
                     <a class="nav-link" href="/my-posts">📝 我的帖子</a>
                 </li>
-                <li class="nav-item" th:if="${session.user}">
+                <li class="nav-item" th:if="${currentUser}">
                     <a class="nav-link" href="/my-boards">📋 我的板块</a>
                 </li>
-                <li class="nav-item" th:if="${session.user}">
-                    <a class="nav-link" href="/messages">💬 私信</a>
+                <li class="nav-item" th:if="${currentUser}">
+                    <a class="nav-link position-relative" href="/messages">
+                        💬 私信
+                        <span th:if="${unreadCount != null && unreadCount > 0}"
+                              class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
+                              th:text="${unreadCount}" style="font-size: 0.6rem;"></span>
+                    </a>
                 </li>
-                <li class="nav-item" th:if="${session.user != null && session.user.role == 'admin'}">
+                <li class="nav-item" th:if="${currentUser != null && currentUser.role == 'admin'}">
                     <a class="nav-link" href="/admin/review">📝 审帖</a>
                 </li>
-                <li class="nav-item" th:if="${session.user != null && session.user.role == 'admin'}">
+                <li class="nav-item" th:if="${currentUser != null && currentUser.role == 'admin'}">
                     <a class="nav-link" href="/admin/board-review">📋 审版</a>
                 </li>
-                <li class="nav-item" th:if="${session.user}">
+                <li class="nav-item" th:if="${currentUser}">
                     <a class="nav-link" href="/logout">退出</a>
                 </li>
-                <li class="nav-item" th:unless="${session.user}">
+                <!-- 未登录 -->
+                <li class="nav-item" th:unless="${currentUser}">
                     <a class="nav-link" href="/register">注册</a>
                 </li>
-                <li class="nav-item" th:unless="${session.user}">
+                <li class="nav-item" th:unless="${currentUser}">
                     <a class="nav-link" href="/login">登录</a>
                 </li>
             </ul>
@@ -83,8 +90,7 @@
 </nav>
 
 <div class="container mt-4">
-    <!-- 创建板块表单 -->
-    <div th:if="${session.user}" class="card mb-4">
+    <div th:if="${currentUser}" class="card mb-4">
         <div class="card-header bg-primary text-white">
             <h5 class="mb-0">创建新板块</h5>
         </div>
@@ -102,9 +108,9 @@
                     <label class="form-label">板块类型</label>
                     <select name="type" class="form-select">
                         <option value="normal">普通板块</option>
-                        <option th:if="${session.user.role == 'admin'}" value="official">官方板块</option>
+                        <option th:if="${currentUser.role == 'admin'}" value="official">官方板块</option>
                     </select>
-                    <div th:if="${session.user.role != 'admin'}" class="form-text text-muted">
+                    <div th:if="${currentUser.role != 'admin'}" class="form-text text-muted">
                         普通用户只能创建普通板块，官方板块需管理员创建。
                     </div>
                 </div>
@@ -132,7 +138,7 @@
                 </div>
                 <div class="card-footer text-muted small d-flex justify-content-between align-items-center">
                     <span>创建于 <span th:text="${#temporals.format(board.createdAt, 'yyyy-MM-dd HH:mm')}">2026-01-01</span></span>
-                    <a th:if="${session.user != null && session.user.role == 'admin'}"
+                    <a th:if="${currentUser != null && currentUser.role == 'admin'}"
                        th:href="@{/boards/{id}/delete(id=${board.id})}"
                        onclick="return confirm('确定要删除这个板块吗？板块下的所有帖子也会被删除。')"
                        class="btn btn-sm btn-outline-danger">🗑️ 删除</a>
@@ -142,7 +148,6 @@
     </div>
 </div>
 
-<!-- 板块创建成功提示 -->
 <div th:if="${boardSuccess}" id="boardSuccessToast" class="position-fixed bottom-0 end-0 p-3" style="z-index: 9999;">
     <div class="toast align-items-center text-bg-success border-0 show" role="alert" aria-live="assertive" aria-atomic="true">
         <div class="d-flex">
@@ -151,7 +156,6 @@
         </div>
     </div>
 </div>
-<!-- 板块创建错误提示 -->
 <div th:if="${boardError}" id="boardErrorToast" class="position-fixed bottom-0 end-0 p-3" style="z-index: 9999;">
     <div class="toast align-items-center text-bg-danger border-0 show" role="alert" aria-live="assertive" aria-atomic="true">
         <div class="d-flex">

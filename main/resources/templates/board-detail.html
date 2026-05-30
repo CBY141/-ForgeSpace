@@ -41,22 +41,29 @@
                     <button type="submit">🔍</button>
                 </form>
                 <a href="/" class="btn btn-outline-light btn-sm me-3">← 返回首页</a>
-                <span th:if="${session.user}" class="d-flex align-items-center">
-                    <img th:src="@{${session.user.avatar}(v=${#dates.createNow().getTime()})}" class="nav-avatar me-2" alt="头像"
+                <!-- 已登录 -->
+                <span th:if="${currentUser}" class="d-flex align-items-center">
+                    <img th:src="@{${currentUser.avatar}(v=${#dates.createNow().getTime()})}" class="nav-avatar me-2" alt="头像"
                          onerror="this.onerror=null; this.src='https://api.dicebear.com/9.x/initials/svg?seed=default';">
                     <a class="text-white text-decoration-none me-2"
-                       th:href="@{/user/{id}(id=${session.user.id})}"
-                       th:text="${session.user.nickname}">昵称</a>
+                       th:href="@{/user/{id}(id=${currentUser.id})}"
+                       th:text="${currentUser.nickname}">昵称</a>
                     <a href="/my-posts" class="btn btn-sm btn-outline-light me-1">📝</a>
                     <a href="/my-boards" class="btn btn-sm btn-outline-light me-1">📋</a>
-                    <a href="/messages" class="btn btn-sm btn-outline-light me-1">💬</a>
-                    <a th:if="${session.user.role == 'admin'}" href="/admin/review"
+                    <a href="/messages" class="btn btn-sm btn-outline-light me-1 position-relative">
+                        💬
+                        <span th:if="${unreadCount != null && unreadCount > 0}"
+                              class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
+                              th:text="${unreadCount}" style="font-size: 0.5rem;"></span>
+                    </a>
+                    <a th:if="${currentUser.role == 'admin'}" href="/admin/review"
                        class="btn btn-sm btn-outline-warning me-2">📝 审帖</a>
-                    <a th:if="${session.user.role == 'admin'}" href="/admin/board-review"
+                    <a th:if="${currentUser.role == 'admin'}" href="/admin/board-review"
                        class="btn btn-sm btn-outline-warning me-2">📋 审版</a>
                     <a href="/logout" class="btn btn-sm btn-outline-danger">退出</a>
                 </span>
-                <span th:unless="${session.user}">
+                <!-- 未登录 -->
+                <span th:unless="${currentUser}">
                     <a href="/login" class="btn btn-sm btn-outline-light ms-2">登录</a>
                     <a href="/register" class="btn btn-sm btn-outline-light ms-2">注册</a>
                 </span>
@@ -78,12 +85,11 @@
         <p class="text-muted" th:text="${board.description}">板块描述</p>
     </div>
 
-    <!-- 发帖区域 -->
-    <div th:if="${session.user}">
-        <div th:if="${board.type == 'official' && session.user.role != 'admin'}" class="alert alert-warning text-center">
+    <div th:if="${currentUser}">
+        <div th:if="${board.type == 'official' && currentUser.role != 'admin'}" class="alert alert-warning text-center">
             📛 该板块为官方板块，仅管理员可以发帖。
         </div>
-        <div th:unless="${board.type == 'official' && session.user.role != 'admin'}" class="card mb-4">
+        <div th:unless="${board.type == 'official' && currentUser.role != 'admin'}" class="card mb-4">
             <div class="card-header bg-success text-white">
                 <h5 class="mb-0">发布新帖子</h5>
             </div>
@@ -100,7 +106,7 @@
             </div>
         </div>
     </div>
-    <div th:unless="${session.user}" class="text-center py-3">
+    <div th:unless="${currentUser}" class="text-center py-3">
         <a href="/login" class="btn btn-outline-primary">登录后发帖</a>
     </div>
 
@@ -145,7 +151,6 @@
     </nav>
 </div>
 
-<!-- 发帖成功提示 -->
 <div th:if="${postSuccess}" id="postSuccessToast" class="position-fixed bottom-0 end-0 p-3" style="z-index: 9999;">
     <div class="toast align-items-center text-bg-success border-0 show" role="alert" aria-live="assertive" aria-atomic="true">
         <div class="d-flex">
